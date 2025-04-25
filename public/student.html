@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Unibus - Student Interface</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: Arial, sans-serif;
+        }
+        #map {
+            width: 100%;
+            height: 100vh;
+        }
+        .control-panel {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            z-index: 1000;
+            background: white;
+            padding: 15px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.2);
+            width: 300px;
+        }
+        h2 {
+            margin-top: 0;
+            color: #4285F4;
+        }
+        button {
+            background-color: #4285F4;
+            color: white;
+            border: none;
+            padding: 10px 15px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 10px 0;
+            width: 100%;
+        }
+        select, input {
+            width: 100%;
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 4px;
+            border: 1px solid #ddd;
+        }
+        .status {
+            margin: 10px 0;
+            padding: 10px;
+            border-radius: 4px;
+            background-color: #f8f9fa;
+        }
+        .bus-icon {
+            background-color: #EA4335;
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            border: 2px solid white;
+            box-shadow: 0 0 5px rgba(0,0,0,0.3);
+            text-align: center;
+            color: white;
+            font-weight: bold;
+            line-height: 20px;
+        }
+        .bus-info {
+            margin-top: 10px;
+            font-size: 0.9em;
+        }
+    </style>
+</head>
+<body>
+    <div id="map"></div>
+    
+    <div class="control-panel">
+        <h2>Student Interface</h2>
+        
+        <div>
+            <label for="busNumber">Enter Bus Number:</label>
+            <select id="busNumber">
+                <option value="">Select a bus</option>
+                <option value="UB101">UB101</option>
+                <option value="UB102">UB102</option>
+                <option value="UB103">UB103</option>
+                <option value="UB104">UB104</option>
+            </select>
+        </div>
+        
+        <button id="trackBusBtn">Track Bus</button>
+        
+        <div class="status">
+            <div>Bus status: <span id="busStatus">No bus selected</span></div>
+            <div id="busInfo" class="bus-info" style="display: none;">
+                <div>Last update: <span id="lastUpdate">-</span></div>
+                <div>Location: <span id="busLocation">-</span></div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script>
+        // Initialize the map
+        const map = L.map('map').setView([0, 0], 15);
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+        }).addTo(map);
+
+        // Elements
+        const busNumberSelect = document.getElementById('busNumber');
+        const trackBusBtn = document.getElementById('trackBusBtn');
+        const busStatus = document.getElementById('busStatus');
+        const lastUpdate = document.getElementById('lastUpdate');
+        const busLocation = document.getElementById('busLocation');
+        const busInfo = document.getElementById('busInfo');
+        
+        let busMarker = null;
+        let updateInterval = null;
+
+        // Track bus location
+        function trackBus() {
+            const busNumber = busNumberSelect.value;
+            if (!busNumber) return;
+            
+            // Clear previous interval if exists
+            if (updateInterval) clearInterval(updateInterval);
+            
+            // Check immediately
+            checkBusLocation();
+            
+            // Then check every 10 seconds
+            updateInterval = setInterval(checkBusLocation, 10000);
+        }
+
+        // Check bus location from server (simulated with localStorage)
+        function checkBusLocation() {
+            const busNumber = busNumberSelect.value;
+            if (!busNumber) return;
+            
+            const busData = localStorage.getItem('busLocation_' + busNumber);
+            
+            if (busData) {
+                const { location, timestamp } = JSON.parse(busData);
+                
+                // Update bus marker
+                if (busMarker) map.removeLayer(busMarker);
+                
+                busMarker = L.marker([location.lat, location.lng], {
+                    icon: L.divIcon({
+                        className: 'bus-icon',
+                        html: busNumber.substring(2), // Show just the number part
+                        iconSize: [24, 24]
+                    }),
+                    title: "Bus " + busNumber
+                }).addTo(map).bindPopup(`Bus ${busNumber}`);
+                
+                map.setView([location.lat, location.lng], 15);
+                
+                // Update status
+                busStatus.textContent = "Bus found";
+                busStatus.style.color = "#34A853";
+                busLocation.textContent = `${location.lat.toFixed(4)}, ${location.lng.toFixed(4)}`;
+                lastUpdate.textContent = new Date(timestamp).toLocaleTimeString();
+                busInfo.style.display = 'block';
+            } else {
+                busStatus.textContent = "Bus not found";
+                busStatus.style.color = "#EA4335";
+                busInfo.style.display = 'none';
+                
+                if (busMarker) {
+                    map.removeLayer(busMarker);
+                    busMarker = null;
+                }
+            }
+        }
+
+        // Event listeners
+        trackBusBtn.addEventListener('click', trackBus);
+        busNumberSelect.addEventListener('change', trackBus);
+
+        // Initialize with default view
+        map.setView([51.505, -0.09], 13);
+    </script>
+</body>
+</html>

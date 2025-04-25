@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Unibus - Driver Interface</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: Arial, sans-serif;
+        }
+        #map {
+            width: 100%;
+            height: 100vh;
+        }
+        .control-panel {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            z-index: 1000;
+            background: white;
+            padding: 15px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.2);
+            width: 300px;
+        }
+        h2 {
+            margin-top: 0;
+            color: #4285F4;
+        }
+        button {
+            background-color: #4285F4;
+            color: white;
+            border: none;
+            padding: 10px 15px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 10px 0;
+            width: 100%;
+        }
+        select {
+            width: 100%;
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 4px;
+            border: 1px solid #ddd;
+        }
+        .status {
+            margin: 10px 0;
+            padding: 10px;
+            border-radius: 4px;
+            background-color: #f8f9fa;
+        }
+        .bus-icon {
+            background-color: #EA4335;
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            border: 2px solid white;
+            box-shadow: 0 0 5px rgba(0,0,0,0.3);
+            text-align: center;
+            color: white;
+            font-weight: bold;
+            line-height: 20px;
+        }
+        #errorMessage {
+            color: red;
+            margin-top: 10px;
+        }
+    </style>
+</head>
+<body>
+    <div id="map"></div>
+    
+    <div class="control-panel">
+        <h2>Driver Interface</h2>
+        
+        <div>
+            <label for="busNumber">Bus Number:</label>
+            <select id="busNumber">
+                <option value="UB101">UB101</option>
+                <option value="UB102">UB102</option>
+                <option value="UB103">UB103</option>
+                <option value="UB104">UB104</option>
+            </select>
+        </div>
+        
+        <div class="status">
+            <div>Your location: <span id="locationStatus">Click "Update My Location"</span></div>
+            <div>Last update: <span id="lastUpdate">Never</span></div>
+            <div id="errorMessage"></div>
+        </div>
+        
+        <button id="updateLocationBtn">Update My Location</button>
+        <button id="autoUpdateBtn" class="secondary">Enable Auto-Update (Every 30s)</button>
+    </div>
+
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script>
+        // Initialize the map with a default view
+        const map = L.map('map').setView([51.505, -0.09], 13);
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+        }).addTo(map);
+
+        // DOM elements
+        const busNumberSelect = document.getElementById('busNumber');
+        const locationStatus = document.getElementById('locationStatus');
+        const lastUpdate = document.getElementById('lastUpdate');
+        const updateLocationBtn = document.getElementById('updateLocationBtn');
+        const autoUpdateBtn = document.getElementById('autoUpdateBtn');
+        const errorMessage = document.getElementById('errorMessage');
+        
+        // App state
+        let busMarker = null;
+        let autoUpdateInterval = null;
+        let currentPosition = null;
+
+        // Update bus marker on map
+        function updateBusMarker(lat, lng) {
+            if (busMarker) {
+                map.removeLayer(busMarker);
+            }
+            
+            busMarker = L.marker([lat, lng], {
+                icon: L.divIcon({
+                    className: 'bus-icon',
+                    html: busNumberSelect.value.substring(2),
+                    iconSize: [24, 24]
+                }),
+                title: "Bus " + busNumberSelect.value
+            }).addTo(map).bindPopup(`Bus ${busNumberSelect.value}`);
+            
+            map.setView([lat, lng], 15);
+        }
+
+        // Handle successful location retrieval
+        function handleLocationSuccess(position) {
+            const lat = position.coords.latitude;
+            const lng = position.coords.longitude;
+            currentPosition = { lat, lng };
+            
+            updateBusMarker(lat, lng);
+            locationStatus.textContent = `${lat.toFixed(4)}, ${lng.toFixed(4)}`;
+            lastUpdate.textContent = new Date().toLocaleTimeString();
+            errorMessage.textContent = "";
+            
+            // Save to localStorage (simulating server storage)
+            const busData = {
+                busNumber: busNumberSelect.value,
+                location: { lat, lng },
+                timestamp: Date.now()
+            };
+            localStorage.setItem('busLocation_' + busNumberSelect.value, JSON.stringify(busData));
+        }
+
+        // Handle location errors
+        function handleLocationError(error) {
+            console.error("Geolocation error:", error);
+            let message = "Error getting location: ";
+            
+            switch(error.code) {
+                case error.PERMISSION_DENIED:
+                    message = "Please allow location access in your browser settings.";
+                    break;
+                case error.POSITION_UNAVAILABLE:
+                    message = "Location information is unavailable.";
+                    break;
+                case error.TIMEOUT:
+                    message = "The request to get location timed out.";
+                    break;
+                default:
+                    message = "An unknown error occurred.";
+            }
+            
+            errorMessage.textContent = message;
+            locationStatus.textContent = "Location access denied";
+        }
+
+        // Get current location
+        function getLocation() {
+            errorMessage.textContent = "Requesting location...";
+            
+            if (!navigator.geolocation) {
+                errorMessage.textContent = "Geolocation is not supported by your browser.";
+                return;
+            }
+
+            // Request location with options
+            navigator.geolocation.getCurrentPosition(
+                handleLocationSuccess,
+                handleLocationError,
+                {
+                    enableHighAccuracy: true,
+                    timeout: 10000,
+                    maximumAge: 0
+                }
+            );
+        }
+
+        // Toggle auto-update
+        function toggleAutoUpdate() {
+            if (autoUpdateInterval) {
+                clearInterval(autoUpdateInterval);
+                autoUpdateInterval = null;
+                autoUpdateBtn.textContent = "Enable Auto-Update (Every 30s)";
+            } else {
+                getLocation();
+                autoUpdateInterval = setInterval(getLocation, 30000);
+                autoUpdateBtn.textContent = "Disable Auto-Update";
+            }
+        }
+
+        // Event listeners
+        updateLocationBtn.addEventListener('click', getLocation);
+        autoUpdateBtn.addEventListener('click', toggleAutoUpdate);
+        busNumberSelect.addEventListener('change', () => {
+            if (currentPosition) {
+                updateBusMarker(currentPosition.lat, currentPosition.lng);
+            }
+        });
+    </script>
+</body>
+</html>
