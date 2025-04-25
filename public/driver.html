@@ -69,6 +69,11 @@
             color: red;
             margin-top: 10px;
         }
+        #successMessage {
+            color: green;
+            margin-top: 10px;
+            display: none;
+        }
     </style>
 </head>
 <body>
@@ -91,6 +96,7 @@
             <div>Your location: <span id="locationStatus">Click "Update My Location"</span></div>
             <div>Last update: <span id="lastUpdate">Never</span></div>
             <div id="errorMessage"></div>
+            <div id="successMessage">Location updated successfully!</div>
         </div>
         
         <button id="updateLocationBtn">Update My Location</button>
@@ -112,6 +118,7 @@
         const updateLocationBtn = document.getElementById('updateLocationBtn');
         const autoUpdateBtn = document.getElementById('autoUpdateBtn');
         const errorMessage = document.getElementById('errorMessage');
+        const successMessage = document.getElementById('successMessage');
         
         // App state
         let busMarker = null;
@@ -136,8 +143,38 @@
             map.setView([lat, lng], 15);
         }
 
+        // Send location to server
+        async function sendLocationToServer(lat, lng) {
+            try {
+                const response = await fetch('/api/update-location', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        busNumber: busNumberSelect.value,
+                        lat: lat,
+                        lng: lng
+                    })
+                });
+
+                if (!response.ok) {
+                    throw new Error('Failed to update server');
+                }
+
+                successMessage.style.display = 'block';
+                setTimeout(() => {
+                    successMessage.style.display = 'none';
+                }, 3000);
+                
+            } catch (err) {
+                console.error("Update error:", err);
+                errorMessage.textContent = "Failed to update server. Trying again...";
+            }
+        }
+
         // Handle successful location retrieval
-        function handleLocationSuccess(position) {
+        async function handleLocationSuccess(position) {
             const lat = position.coords.latitude;
             const lng = position.coords.longitude;
             currentPosition = { lat, lng };
@@ -147,13 +184,8 @@
             lastUpdate.textContent = new Date().toLocaleTimeString();
             errorMessage.textContent = "";
             
-            // Save to localStorage (simulating server storage)
-            const busData = {
-                busNumber: busNumberSelect.value,
-                location: { lat, lng },
-                timestamp: Date.now()
-            };
-            localStorage.setItem('busLocation_' + busNumberSelect.value, JSON.stringify(busData));
+            // Send to server
+            await sendLocationToServer(lat, lng);
         }
 
         // Handle location errors
@@ -207,8 +239,8 @@
                 autoUpdateInterval = null;
                 autoUpdateBtn.textContent = "Enable Auto-Update (Every 30s)";
             } else {
-                getLocation();
-                autoUpdateInterval = setInterval(getLocation, 30000);
+                getLocation(); // Update immediately
+                autoUpdateInterval = setInterval(getLocation, 30000); // Then every 30 seconds
                 autoUpdateBtn.textContent = "Disable Auto-Update";
             }
         }

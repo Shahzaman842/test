@@ -69,6 +69,11 @@
             margin-top: 10px;
             font-size: 0.9em;
         }
+        #errorMessage {
+            color: red;
+            margin-top: 10px;
+            display: none;
+        }
     </style>
 </head>
 <body>
@@ -92,6 +97,7 @@
         
         <div class="status">
             <div>Bus status: <span id="busStatus">No bus selected</span></div>
+            <div id="errorMessage">Error fetching bus location</div>
             <div id="busInfo" class="bus-info" style="display: none;">
                 <div>Last update: <span id="lastUpdate">-</span></div>
                 <div>Location: <span id="busLocation">-</span></div>
@@ -102,18 +108,19 @@
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script>
         // Initialize the map
-        const map = L.map('map').setView([0, 0], 15);
+        const map = L.map('map').setView([51.505, -0.09], 13);
         L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
             attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
         }).addTo(map);
 
-        // Elements
+        // DOM elements
         const busNumberSelect = document.getElementById('busNumber');
         const trackBusBtn = document.getElementById('trackBusBtn');
         const busStatus = document.getElementById('busStatus');
         const lastUpdate = document.getElementById('lastUpdate');
         const busLocation = document.getElementById('busLocation');
         const busInfo = document.getElementById('busInfo');
+        const errorMessage = document.getElementById('errorMessage');
         
         let busMarker = null;
         let updateInterval = null;
@@ -133,40 +140,49 @@
             updateInterval = setInterval(checkBusLocation, 10000);
         }
 
-        // Check bus location from server (simulated with localStorage)
-        function checkBusLocation() {
+        // Fetch bus location from server
+        async function checkBusLocation() {
             const busNumber = busNumberSelect.value;
             if (!busNumber) return;
             
-            const busData = localStorage.getItem('busLocation_' + busNumber);
-            
-            if (busData) {
-                const { location, timestamp } = JSON.parse(busData);
+            try {
+                const response = await fetch(`/api/get-location/${busNumber}`);
+                
+                if (!response.ok) {
+                    throw new Error('Bus not found');
+                }
+                
+                const data = await response.json();
                 
                 // Update bus marker
                 if (busMarker) map.removeLayer(busMarker);
                 
-                busMarker = L.marker([location.lat, location.lng], {
+                busMarker = L.marker([data.lat, data.lng], {
                     icon: L.divIcon({
                         className: 'bus-icon',
-                        html: busNumber.substring(2), // Show just the number part
+                        html: busNumber.substring(2),
                         iconSize: [24, 24]
                     }),
                     title: "Bus " + busNumber
                 }).addTo(map).bindPopup(`Bus ${busNumber}`);
                 
-                map.setView([location.lat, location.lng], 15);
+                map.setView([data.lat, data.lng], 15);
                 
                 // Update status
                 busStatus.textContent = "Bus found";
                 busStatus.style.color = "#34A853";
-                busLocation.textContent = `${location.lat.toFixed(4)}, ${location.lng.toFixed(4)}`;
-                lastUpdate.textContent = new Date(timestamp).toLocaleTimeString();
+                busLocation.textContent = `${data.lat.toFixed(4)}, ${data.lng.toFixed(4)}`;
+                lastUpdate.textContent = new Date(data.timestamp).toLocaleTimeString();
                 busInfo.style.display = 'block';
-            } else {
+                errorMessage.style.display = 'none';
+                
+            } catch (error) {
+                console.error("Error fetching bus location:", error);
                 busStatus.textContent = "Bus not found";
                 busStatus.style.color = "#EA4335";
                 busInfo.style.display = 'none';
+                errorMessage.textContent = error.message;
+                errorMessage.style.display = 'block';
                 
                 if (busMarker) {
                     map.removeLayer(busMarker);
@@ -178,9 +194,6 @@
         // Event listeners
         trackBusBtn.addEventListener('click', trackBus);
         busNumberSelect.addEventListener('change', trackBus);
-
-        // Initialize with default view
-        map.setView([51.505, -0.09], 13);
     </script>
 </body>
 </html>
