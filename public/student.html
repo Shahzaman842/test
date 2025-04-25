@@ -3,96 +3,359 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Unibus - Student Interface</title>
+    <title>Unibus - Student Tracker</title>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <link rel="stylesheet" href="https://unpkg.com/leaflet-routing-machine@3.2.12/dist/leaflet-routing-machine.css" />
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
-        body {
+        :root {
+            --primary: #4361ee;
+            --secondary: #3f37c9;
+            --accent: #4895ef;
+            --danger: #f72585;
+            --success: #4cc9f0;
+            --light: #f8f9fa;
+            --dark: #212529;
+            --gray: #6c757d;
+            --white: #ffffff;
+        }
+        
+        * {
             margin: 0;
             padding: 0;
-            font-family: Arial, sans-serif;
+            box-sizing: border-box;
         }
+        
+        body {
+            font-family: 'Poppins', sans-serif;
+            background-color: #f5f7fa;
+            color: var(--dark);
+            line-height: 1.6;
+        }
+        
         #map {
             width: 100%;
             height: 100vh;
+            z-index: 1;
         }
+        
         .control-panel {
             position: absolute;
             top: 20px;
             right: 20px;
             z-index: 1000;
-            background: white;
-            padding: 15px;
-            border-radius: 8px;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.2);
-            width: 300px;
+            background: rgba(255, 255, 255, 0.95);
+            padding: 20px;
+            border-radius: 16px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+            width: 350px;
             max-height: 90vh;
             overflow-y: auto;
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            transform: translateY(0);
+            transition: all 0.3s ease;
         }
-        h2 {
-            margin-top: 0;
-            color: #4285F4;
+        
+        .control-panel:hover {
+            box-shadow: 0 15px 35px rgba(0, 0, 0, 0.15);
+            transform: translateY(-2px);
         }
-        button {
-            background-color: #4285F4;
+        
+        .panel-header {
+            display: flex;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+        
+        .logo {
+            width: 40px;
+            height: 40px;
+            background: linear-gradient(135deg, var(--primary), var(--accent));
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-right: 12px;
             color: white;
-            border: none;
-            padding: 10px 15px;
-            border-radius: 4px;
-            cursor: pointer;
-            margin: 10px 0;
-            width: 100%;
+            font-size: 18px;
+            font-weight: bold;
         }
+        
+        h2 {
+            font-size: 1.5rem;
+            font-weight: 600;
+            color: var(--dark);
+            margin: 0;
+        }
+        
+        .panel-subtitle {
+            font-size: 0.85rem;
+            color: var(--gray);
+            margin-top: 4px;
+        }
+        
+        .form-group {
+            margin-bottom: 20px;
+        }
+        
+        label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 500;
+            color: var(--dark);
+            font-size: 0.9rem;
+        }
+        
         select {
             width: 100%;
-            padding: 10px;
-            margin: 10px 0;
-            border-radius: 4px;
-            border: 1px solid #ddd;
+            padding: 12px 15px;
+            border-radius: 10px;
+            border: 1px solid #e0e0e0;
+            background-color: var(--white);
+            font-family: 'Poppins', sans-serif;
+            font-size: 0.9rem;
+            color: var(--dark);
+            transition: all 0.3s;
+            appearance: none;
+            background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e");
+            background-repeat: no-repeat;
+            background-position: right 12px center;
+            background-size: 16px;
         }
-        .status {
-            margin: 10px 0;
-            padding: 10px;
-            border-radius: 4px;
-            background-color: #f8f9fa;
+        
+        select:focus {
+            outline: none;
+            border-color: var(--accent);
+            box-shadow: 0 0 0 3px rgba(67, 97, 238, 0.2);
         }
-        .bus-icon {
-            background-color: #EA4335;
+        
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            padding: 12px 20px;
+            border-radius: 10px;
+            font-family: 'Poppins', sans-serif;
+            font-size: 0.9rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.3s;
+            border: none;
+            width: 100%;
+            margin-bottom: 10px;
+        }
+        
+        .btn-primary {
+            background: linear-gradient(135deg, var(--primary), var(--secondary));
+            color: white;
+            box-shadow: 0 4px 15px rgba(67, 97, 238, 0.3);
+        }
+        
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(67, 97, 238, 0.4);
+        }
+        
+        .btn-secondary {
+            background-color: var(--white);
+            color: var(--primary);
+            border: 1px solid var(--primary);
+        }
+        
+        .btn-secondary:hover {
+            background-color: rgba(67, 97, 238, 0.05);
+        }
+        
+        .btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none !important;
+            box-shadow: none !important;
+        }
+        
+        .status-card {
+            background-color: var(--white);
+            border-radius: 12px;
+            padding: 16px;
+            margin-bottom: 20px;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.03);
+            border: 1px solid rgba(0, 0, 0, 0.05);
+        }
+        
+        .status-header {
+            display: flex;
+            align-items: center;
+            margin-bottom: 12px;
+        }
+        
+        .status-icon {
             width: 24px;
             height: 24px;
+            border-radius: 6px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-right: 10px;
+            color: white;
+            font-size: 12px;
+        }
+        
+        .status-icon.success {
+            background-color: var(--success);
+        }
+        
+        .status-icon.error {
+            background-color: var(--danger);
+        }
+        
+        .status-icon.info {
+            background-color: var(--gray);
+        }
+        
+        .status-title {
+            font-weight: 500;
+            font-size: 0.95rem;
+        }
+        
+        .status-message {
+            font-size: 0.85rem;
+            color: var(--gray);
+        }
+        
+        .route-info {
+            background-color: var(--white);
+            border-radius: 12px;
+            padding: 16px;
+            margin-top: 20px;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.03);
+            border: 1px solid rgba(0, 0, 0, 0.05);
+            display: none;
+        }
+        
+        .route-stats {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 15px;
+            margin-bottom: 15px;
+        }
+        
+        .stat-item {
+            text-align: center;
+            padding: 10px;
+            background-color: rgba(67, 97, 238, 0.05);
+            border-radius: 8px;
+        }
+        
+        .stat-value {
+            font-weight: 600;
+            font-size: 1.1rem;
+            color: var(--primary);
+            margin-bottom: 4px;
+        }
+        
+        .stat-label {
+            font-size: 0.7rem;
+            color: var(--gray);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        
+        .route-instructions {
+            max-height: 300px;
+            overflow-y: auto;
+            margin-top: 15px;
+            padding-right: 8px;
+        }
+        
+        .instruction-step {
+            display: flex;
+            align-items: flex-start;
+            padding: 10px 0;
+            border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+        }
+        
+        .step-number {
+            width: 24px;
+            height: 24px;
+            background-color: rgba(67, 97, 238, 0.1);
+            color: var(--primary);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.7rem;
+            font-weight: 600;
+            margin-right: 12px;
+            flex-shrink: 0;
+        }
+        
+        .step-text {
+            font-size: 0.85rem;
+            color: var(--dark);
+        }
+        
+        .bus-icon {
+            background-color: var(--danger);
+            width: 28px;
+            height: 28px;
             border-radius: 50%;
             border: 2px solid white;
-            box-shadow: 0 0 5px rgba(0,0,0,0.3);
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.2);
             text-align: center;
             color: white;
             font-weight: bold;
-            line-height: 20px;
+            line-height: 24px;
+            font-size: 0.8rem;
         }
-        .route-info {
-            margin-top: 10px;
-            font-size: 0.9em;
+        
+        .loading {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid rgba(255, 255, 255, 0.3);
+            border-radius: 50%;
+            border-top-color: white;
+            animation: spin 1s ease-in-out infinite;
+            margin-right: 8px;
         }
-        .route-instructions {
-            max-height: 200px;
-            overflow-y: auto;
-            margin-top: 10px;
-            padding: 5px;
-            background-color: #f0f0f0;
-            border-radius: 4px;
+        
+        @keyframes spin {
+            to { transform: rotate(360deg); }
         }
-        .instruction-step {
-            padding: 5px 0;
-            border-bottom: 1px solid #ddd;
+        
+        /* Custom scrollbar */
+        ::-webkit-scrollbar {
+            width: 6px;
         }
-        #errorMessage {
-            color: red;
-            margin-top: 10px;
-            display: none;
+        
+        ::-webkit-scrollbar-track {
+            background: rgba(0, 0, 0, 0.05);
+            border-radius: 10px;
         }
-        #successMessage {
-            color: green;
-            margin-top: 10px;
-            display: none;
+        
+        ::-webkit-scrollbar-thumb {
+            background: rgba(67, 97, 238, 0.3);
+            border-radius: 10px;
+        }
+        
+        ::-webkit-scrollbar-thumb:hover {
+            background: rgba(67, 97, 238, 0.5);
+        }
+        
+        /* Responsive adjustments */
+        @media (max-width: 768px) {
+            .control-panel {
+                width: 90%;
+                left: 5%;
+                right: auto;
+                top: 10px;
+            }
+            
+            .route-stats {
+                grid-template-columns: 1fr;
+            }
         }
     </style>
 </head>
@@ -100,34 +363,68 @@
     <div id="map"></div>
     
     <div class="control-panel">
-        <h2>Bus Tracker</h2>
+        <div class="panel-header">
+            <div class="logo">
+                <i class="fas fa-bus"></i>
+            </div>
+            <div>
+                <h2>Unibus Tracker</h2>
+                <div class="panel-subtitle">Real-time bus tracking system</div>
+            </div>
+        </div>
         
-        <div>
-            <label for="busNumber">Select Bus:</label>
+        <div class="form-group">
+            <label for="busNumber"><i class="fas fa-bus-alt"></i> Select Bus</label>
             <select id="busNumber">
-                <option value="">Select a bus</option>
-                <option value="UB101">UB101</option>
-                <option value="UB102">UB102</option>
-                <option value="UB103">UB103</option>
-                <option value="UB104">UB104</option>
+                <option value="">Choose your bus...</option>
+                <option value="UB101">UB101 - Campus Express</option>
+                <option value="UB102">UB102 - Downtown Shuttle</option>
+                <option value="UB103">UB103 - Northside Loop</option>
+                <option value="UB104">UB104 - Southside Connector</option>
             </select>
         </div>
         
-        <button id="trackBusBtn">Track Bus</button>
-        <button id="getDirectionsBtn" class="secondary" disabled>Get Directions to Bus</button>
+        <button id="trackBusBtn" class="btn btn-primary">
+            <i class="fas fa-search-location"></i> Track Bus
+        </button>
+        <button id="getDirectionsBtn" class="btn btn-secondary" disabled>
+            <i class="fas fa-route"></i> Get Directions
+        </button>
         
-        <div class="status">
-            <div>Bus status: <span id="busStatus">No bus selected</span></div>
-            <div id="errorMessage"></div>
-            <div id="successMessage"></div>
+        <div class="status-card" id="statusCard">
+            <div class="status-header">
+                <div class="status-icon info">
+                    <i class="fas fa-info"></i>
+                </div>
+                <div>
+                    <div class="status-title">Bus Status</div>
+                    <div class="status-message" id="busStatus">No bus selected</div>
+                </div>
+            </div>
+        </div>
+        
+        <div id="routeInfo" class="route-info">
+            <div class="route-stats">
+                <div class="stat-item">
+                    <div class="stat-value" id="routeDistance">-</div>
+                    <div class="stat-label">Distance</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-value" id="routeTime">-</div>
+                    <div class="stat-label">ETA</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-value" id="arrivalTime">-</div>
+                    <div class="stat-label">Arrival</div>
+                </div>
+            </div>
             
-            <div id="routeInfo" class="route-info" style="display: none;">
-                <div><strong>Distance:</strong> <span id="routeDistance">-</span></div>
-                <div><strong>ETA:</strong> <span id="routeTime">-</span></div>
-                <div><strong>Arrival Time:</strong> <span id="arrivalTime">-</span></div>
-                
-                <div class="route-instructions" id="routeInstructions">
-                    <div>Select "Get Directions" to see navigation steps</div>
+            <h3 style="font-size: 0.95rem; margin-bottom: 10px; color: var(--dark);">
+                <i class="fas fa-list-ol"></i> Navigation Steps
+            </h3>
+            <div class="route-instructions" id="routeInstructions">
+                <div style="text-align: center; color: var(--gray); font-size: 0.85rem;">
+                    Select "Get Directions" to see navigation steps
                 </div>
             </div>
         </div>
@@ -136,10 +433,12 @@
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script src="https://unpkg.com/leaflet-routing-machine@3.2.12/dist/leaflet-routing-machine.js"></script>
     <script>
-        // Initialize the map
+        // Initialize the map with a more stylish tile layer
         const map = L.map('map').setView([51.505, -0.09], 13);
-        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-            attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+        L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
+            attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>',
+            subdomains: 'abcd',
+            maxZoom: 19
         }).addTo(map);
 
         // DOM elements
@@ -152,8 +451,7 @@
         const arrivalTime = document.getElementById('arrivalTime');
         const routeInstructions = document.getElementById('routeInstructions');
         const routeInfo = document.getElementById('routeInfo');
-        const errorMessage = document.getElementById('errorMessage');
-        const successMessage = document.getElementById('successMessage');
+        const statusCard = document.getElementById('statusCard');
         
         // App state
         let busMarker = null;
@@ -161,6 +459,7 @@
         let currentBusLocation = null;
         let routingControl = null;
         let studentPosition = null;
+        let isTracking = false;
 
         // Format time
         function formatTime(seconds) {
@@ -182,13 +481,31 @@
         function calculateArrivalTime(seconds) {
             const now = new Date();
             const arrival = new Date(now.getTime() + seconds * 1000);
-            return arrival.toLocaleTimeString();
+            return arrival.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+        }
+
+        // Update status card
+        function updateStatus(type, message) {
+            const icon = statusCard.querySelector('.status-icon');
+            const title = statusCard.querySelector('.status-title');
+            
+            icon.className = 'status-icon ' + type;
+            icon.innerHTML = type === 'success' ? '<i class="fas fa-check"></i>' : 
+                           type === 'error' ? '<i class="fas fa-exclamation"></i>' : 
+                           '<i class="fas fa-info"></i>';
+            
+            busStatus.textContent = message;
+            busStatus.style.color = type === 'success' ? 'var(--success)' : 
+                                  type === 'error' ? 'var(--danger)' : 'var(--gray)';
         }
 
         // Track bus location
         function trackBus() {
             const busNumber = busNumberSelect.value;
             if (!busNumber) return;
+            
+            isTracking = true;
+            trackBusBtn.innerHTML = '<span class="loading"></span> Tracking Bus...';
             
             // Clear previous interval if exists
             if (updateInterval) clearInterval(updateInterval);
@@ -208,6 +525,8 @@
                     return;
                 }
 
+                getDirectionsBtn.innerHTML = '<span class="loading"></span> Locating You...';
+                
                 navigator.geolocation.getCurrentPosition(
                     position => resolve({
                         lat: position.coords.latitude,
@@ -232,7 +551,9 @@
                     map.removeControl(routingControl);
                 }
                 
-                // Calculate route using OSRM
+                getDirectionsBtn.innerHTML = '<span class="loading"></span> Calculating Route...';
+                
+                // Calculate route using OSRM with custom style
                 routingControl = L.Routing.control({
                     waypoints: [
                         L.latLng(studentPosition.lat, studentPosition.lng),
@@ -243,8 +564,18 @@
                     addWaypoints: false,
                     draggableWaypoints: false,
                     fitSelectedRoutes: true,
-                    show: true,
+                    show: false, // We'll show our own instructions
                     collapsible: true,
+                    lineOptions: {
+                        styles: [
+                            {
+                                color: '#4361ee',
+                                opacity: 0.8,
+                                weight: 6
+                            }
+                        ]
+                    },
+                    createMarker: function() { return null; }, // No default markers
                     formatter: new L.Routing.Formatter({
                         language: 'en',
                         units: 'metric'
@@ -263,25 +594,36 @@
                     
                     // Display instructions
                     routeInstructions.innerHTML = '';
-                    route.instructions.forEach(instruction => {
+                    route.instructions.forEach((instruction, index) => {
                         const step = document.createElement('div');
                         step.className = 'instruction-step';
-                        step.innerHTML = instruction.text;
+                        step.innerHTML = `
+                            <div class="step-number">${index + 1}</div>
+                            <div class="step-text">${instruction.text}</div>
+                        `;
                         routeInstructions.appendChild(step);
                     });
                     
                     routeInfo.style.display = 'block';
-                    successMessage.textContent = "Route calculated successfully";
-                    successMessage.style.display = 'block';
-                    setTimeout(() => {
-                        successMessage.style.display = 'none';
-                    }, 3000);
+                    updateStatus('success', 'Route calculated successfully');
+                    getDirectionsBtn.innerHTML = '<i class="fas fa-route"></i> Directions Found';
+                    
+                    // Add marker for student location
+                    if (studentPosition) {
+                        L.marker([studentPosition.lat, studentPosition.lng], {
+                            icon: L.divIcon({
+                                className: 'bus-icon',
+                                html: '<i class="fas fa-user"></i>',
+                                iconSize: [28, 28]
+                            })
+                        }).addTo(map).bindPopup('Your Location');
+                    }
                 });
                 
             } catch (error) {
                 console.error("Routing error:", error);
-                errorMessage.textContent = "Could not calculate route: " + error;
-                errorMessage.style.display = 'block';
+                updateStatus('error', "Could not calculate route: " + error);
+                getDirectionsBtn.innerHTML = '<i class="fas fa-route"></i> Get Directions';
             }
         }
 
@@ -307,26 +649,27 @@
                     icon: L.divIcon({
                         className: 'bus-icon',
                         html: busNumber.substring(2),
-                        iconSize: [24, 24]
+                        iconSize: [28, 28]
                     }),
-                    title: "Bus " + busNumber
-                }).addTo(map).bindPopup(`Bus ${busNumber}`);
+                    title: "Bus " + busNumber,
+                    zIndexOffset: 1000
+                }).addTo(map).bindPopup(`
+                    <div style="font-weight: 500; margin-bottom: 5px;">Bus ${busNumber}</div>
+                    <div style="font-size: 0.8rem;">Last update: ${new Date(data.timestamp).toLocaleTimeString()}</div>
+                `);
                 
                 map.setView([data.lat, data.lng], 15);
                 
                 // Update status
-                busStatus.textContent = "Bus found - " + new Date(data.timestamp).toLocaleTimeString();
-                busStatus.style.color = "#34A853";
-                errorMessage.style.display = 'none';
+                updateStatus('success', `Bus ${busNumber} found - ${new Date(data.timestamp).toLocaleTimeString()}`);
                 getDirectionsBtn.disabled = false;
+                trackBusBtn.innerHTML = '<i class="fas fa-search-location"></i> Tracking Bus';
                 
             } catch (error) {
                 console.error("Error fetching bus location:", error);
-                busStatus.textContent = "Bus not found";
-                busStatus.style.color = "#EA4335";
-                errorMessage.textContent = error.message;
-                errorMessage.style.display = 'block';
+                updateStatus('error', error.message);
                 getDirectionsBtn.disabled = true;
+                trackBusBtn.innerHTML = '<i class="fas fa-search-location"></i> Track Bus';
                 
                 if (busMarker) {
                     map.removeLayer(busMarker);
@@ -338,7 +681,11 @@
         // Event listeners
         trackBusBtn.addEventListener('click', trackBus);
         getDirectionsBtn.addEventListener('click', calculateRouteToBus);
-        busNumberSelect.addEventListener('change', trackBus);
+        busNumberSelect.addEventListener('change', function() {
+            if (isTracking) {
+                trackBus();
+            }
+        });
     </script>
 </body>
 </html>
